@@ -1,3 +1,6 @@
+import glob
+import os
+
 import evdev
 from evdev import ecodes
 
@@ -18,6 +21,15 @@ class KeyboardGrabber:
 
     def discover(self) -> None:
         self._devices = []
+        # evdev.list_devices() silently skips unreadable devices in newer versions,
+        # so check for inaccessible event files before iterating.
+        event_files = glob.glob("/dev/input/event*")
+        if event_files and not os.access(event_files[0], os.R_OK):
+            raise KbdCleanPermissionError(
+                f"Cannot open {event_files[0]} — add your user to the 'input' group:\n"
+                "  sudo usermod -aG input $USER\n"
+                "Then log out and back in."
+            )
         for path in evdev.list_devices():
             try:
                 dev = evdev.InputDevice(path)
