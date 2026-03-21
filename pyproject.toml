@@ -24,7 +24,7 @@ build-backend = "hatchling.build"
 packages = ["src/kbdclean"]
 
 [dependency-groups]
-dev = ["pytest>=8", "flake8", "pylint"]
+dev = ["pytest>=8", "pytest-cov", "flake8", "pylint"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
