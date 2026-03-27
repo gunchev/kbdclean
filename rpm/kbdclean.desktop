@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=kbdclean
+GenericName=Keyboard Cleaner
+Comment=Lock your keyboard, wipe it clean
+Exec=kbdclean
+Icon=kbdclean
+Terminal=false
+Categories=Utility;
+Keywords=keyboard;clean;maintenance;lock;
+StartupNotify=false

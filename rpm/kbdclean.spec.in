@@ -1,0 +1,67 @@
+Name:           kbdclean
+Version:        0.0.0
+Release:        0%{?dist}
+Summary:        Grab all keyboards for safe physical cleaning
+
+License:        Unlicense
+URL:            https://github.com/gunchev/kbdclean
+Source0:        %{name}-%{version}.tar.gz
+Source1:        %{name}.desktop
+Source2:        %{name}.svg
+
+BuildArch:      noarch
+BuildRequires:  python3-devel
+BuildRequires:  pyproject-rpm-macros
+BuildRequires:  desktop-file-utils
+
+Requires:       python3dist(evdev) >= 1.7.0
+Requires:       python3dist(pyqt6) >= 6.6.0
+
+%description
+kbdclean is a fullscreen keyboard cleaning utility.  It grabs all keyboard
+input at the evdev level, displays which keys you press on an on-screen
+layout, and releases the keyboard when you type the exit phrase
+"keys are clean" or click the Done button.
+
+Useful when physically cleaning a keyboard without triggering system
+shortcuts or typing into open applications.
+
+
+%prep
+%autosetup
+
+
+%generate_buildrequires
+%pyproject_buildrequires
+
+
+%build
+%pyproject_wheel
+
+
+%install
+%pyproject_install
+%pyproject_save_files -l kbdclean
+
+desktop-file-install \
+    --dir=%{buildroot}%{_datadir}/applications \
+    %{SOURCE1}
+
+install -Dm 644 %{SOURCE2} \
+    %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/%{name}.svg
+
+
+%check
+%pyproject_check_import
+
+
+%files -f %{pyproject_files}
+%doc README.md CHANGELOG.md
+%{_bindir}/kbdclean
+%{_datadir}/applications/%{name}.desktop
+%{_datadir}/icons/hicolor/scalable/apps/%{name}.svg
+
+
+%changelog
+* Fri Mar 27 2026 Doncho N. Gunchev <dgunchev@gmail.com> - 0.1.0-0
+- Initial RPM package, Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>

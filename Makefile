@@ -1,0 +1,145 @@
+SHELL:=/usr/bin/env bash # Use bash syntax, mitigates dash's printf on Debian
+export TOP:=$(shell dirname "$(abspath $(lastword $(MAKEFILE_LIST)))")
+name:=$(shell basename "$(TOP)")
+export PIP_FIND_LINKS:=$(abspath $(TOP)/whl_local/)
+export PYTHONPATH:=$(TOP)/src
+
+
+.PHONY: help
+help:
+	@echo
+	@echo "▍Help"
+	@echo "▀▀▀▀▀▀"
+	@echo
+	@echo "Available targets:"
+	@echo "    check:              run checks"
+	@echo "    test:               run all tests"
+	@echo "    coverage:           run all tests and collect code coverage"
+	@echo "    lint:               run linters"
+	@echo
+	@echo "    pep8format:         auto-format code to PEP8 standards"
+	@echo
+	@echo "    build:              build the source and whl package, look for */dist/*.whl"
+	@echo
+	@echo "    release:            tag a new release (required: V=X.Y.Z), e.g. make V=1.0.0 release"
+	@echo
+	@echo "    rpm:                build RPM and SRPM (optional: RPM_VER=X.Y.Z RPM_REV=N)"
+	@echo "    srpm:               build SRPM only  (optional: RPM_VER=X.Y.Z RPM_REV=N)"
+	@echo
+	@echo "    run:                sync dev environment and run the app"
+	@echo
+	@echo "    clean:              clean the build tree"
+	@echo
+	@echo "name='$(name)'"
+	@echo "PYTHONPATH     = '$(PYTHONPATH)'"
+	@echo "PIP_FIND_LINKS = '$(PIP_FIND_LINKS)'"
+
+
+.PHONY: check
+check: lint
+
+
+.PHONY: test
+test:
+	pytest -v
+
+
+.PHONY: coverage
+coverage:
+	pytest -v --cov . --cov-report=term-missing
+
+
+.PHONY: lint
+lint:
+	pylint "src/$(name)"
+
+
+.PHONY: pep8format
+pep8format:
+	autopep8 --in-place --recursive "src/$(name)"
+
+
+.PHONY: build
+build:
+	python3 -m build
+	mkdir -p "$(PIP_FIND_LINKS)/"
+	cp dist/*.whl "$(PIP_FIND_LINKS)/"
+
+
+.PHONY: userinstall
+userinstall: build
+	python3 -m pip install $(PIP_USER) ./dist/*.whl
+
+
+.PHONY: uninstall
+uninstall:
+	python3 -m pip uninstall -y "$(name)"
+
+
+.PHONY: useruninstall
+useruninstall: uninstall
+
+
+RPM_VER ?= $(shell git tag --sort=-version:refname | grep -E '^v?[0-9]' | head -1 | sed 's/^v//')
+RPM_REV ?= 0
+
+.PHONY: rpmprep
+rpmprep:
+	@[ -n "$(RPM_VER)" ] || { echo "Error: RPM_VER could not be determined (no release tags found)."; exit 1; }
+	cp "rpm/$(name).spec.in" "$(name).spec"
+	sed -i 's|^Version:.*|Version:        $(RPM_VER)|g' "$(name).spec"
+	sed -i 's|^Release:.*|Release:        $(RPM_REV)%{?dist}|g' "$(name).spec"
+	rm -rf ~/rpmbuild/RPMS/noarch/"$(name)"*.rpm ~/rpmbuild/SRPMS/"$(name)"*.src.rpm
+	python3 -m build --sdist
+	mkdir -p ~/rpmbuild/SOURCES
+	cp dist/$(name)-$(RPM_VER).tar.gz rpm/$(name).desktop rpm/$(name).svg ~/rpmbuild/SOURCES/
+
+
+.PHONY: rpm
+rpm: rpmprep
+	rpmbuild -ba "$(name).spec"
+	rm "$(name).spec"
+
+
+.PHONY: srpm
+srpm: rpmprep
+	rpmbuild -bs "$(name).spec"
+	rm "$(name).spec"
+
+
+.PHONY: clean
+clean:
+	-python3 -m coverage erase
+	-python3 -m pip uninstall -y "$(name)"
+	find . -depth \( -name '*.pyc' -o -name '__pycache__' -o -name '__pypackages__' \
+		-o -name '*.pyc' -o -name '*.pyd' -o -name '*.pyo' -o -name '*.egg-info' \
+		-o -name '*.py,cover'  \) -not -path "./.?*/*" \
+		-exec rm -rf \{\} \;
+	rm -rf site.py build/ dist/ "$(name).spec" VERSION bin/ .tox/ .pytest_cache/
+
+
+.PHONY: run
+run:
+	uv sync --group dev
+	uv run kbdclean
+
+
+.PHONY: release
+release:
+	@[ -n "$(V)" ] || { echo "Error: V is not set.  Usage: make V=X.Y.Z release"; exit 1; }
+	"$(TOP)/release.py" "$(V)"
+
+
+# https://packaging.python.org/en/latest/guides/using-testpypi/
+# Upload to https://test.pypi.org/
+# release.py builds the distribution at the tagged commit before bumping
+# to the next dev version, so upload must NOT rebuild.
+.PHONY: test_upload
+test_upload:
+	twine upload --repository testpypi dist/kbdclean-*.whl dist/kbdclean-*.tar.gz
+
+
+# Upload to https://pypi.org/
+.PHONY: upload
+upload:
+	twine upload dist/kbdclean-*.whl dist/kbdclean-*.tar.gz
