@@ -7,7 +7,8 @@ from kbdclean.phrase import PhraseDetector
 
 
 class KeyboardWorker(QThread):
-    key_pressed = pyqtSignal()
+    key_pressed = pyqtSignal(int)   # emitted on key-down; carries evdev key code
+    key_released = pyqtSignal(int)  # emitted on key-up;   carries evdev key code
     phrase_matched = pyqtSignal()
     error_occurred = pyqtSignal(str)
 
@@ -24,11 +25,15 @@ class KeyboardWorker(QThread):
                 if not r:
                     continue
                 for event in self._device.read():
-                    if event.type == ecodes.EV_KEY and event.value == 1:
-                        self.key_pressed.emit()
+                    if event.type != ecodes.EV_KEY:
+                        continue
+                    if event.value == 1:  # key-down
+                        self.key_pressed.emit(event.code)
                         if self._detector.feed(event.code):
                             self.phrase_matched.emit()
                             return
+                    elif event.value == 0:  # key-up
+                        self.key_released.emit(event.code)
         except Exception as e:
             self.error_occurred.emit(str(e))
 

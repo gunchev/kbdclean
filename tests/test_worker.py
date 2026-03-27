@@ -38,7 +38,7 @@ def _run_worker_with_events(device, events, detector=None):
     pressed = []
     matched = []
     errors = []
-    worker.key_pressed.connect(lambda: pressed.append(1))
+    worker.key_pressed.connect(lambda code: pressed.append(code))
     worker.phrase_matched.connect(lambda: matched.append(1))
     worker.error_occurred.connect(errors.append)
 
@@ -65,15 +65,36 @@ class TestKeyboardWorker:
         device.fd = 5
         event = _make_event(ecodes.EV_KEY, ecodes.KEY_A, 1)
         pressed, matched, errors, _ = _run_worker_with_events(device, [event])
-        assert len(pressed) == 1
+        assert pressed == [ecodes.KEY_A]
         assert matched == []
         assert errors == []
 
-    def test_key_up_does_not_emit(self, qapp):
+    def test_key_up_emits_key_released(self, qapp):
         device = MagicMock()
         device.fd = 5
         event = _make_event(ecodes.EV_KEY, ecodes.KEY_A, 0)  # value=0 is key-up
-        pressed, matched, errors, _ = _run_worker_with_events(device, [event])
+
+        worker = KeyboardWorker(device, PhraseDetector())
+        released = []
+        pressed = []
+        worker.key_released.connect(lambda code: released.append(code))
+        worker.key_pressed.connect(lambda code: pressed.append(code))
+        device.read.return_value = [event]
+
+        call_count = 0
+
+        def fake_select(rlist, wlist, xlist, timeout):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return rlist, [], []
+            worker.stop()
+            return [], [], []
+
+        with patch("select.select", side_effect=fake_select):
+            worker.run()
+
+        assert released == [ecodes.KEY_A]
         assert pressed == []
 
     def test_key_repeat_does_not_emit(self, qapp):
@@ -163,5 +184,5 @@ class TestKeyboardWorker:
             _make_event(ecodes.EV_KEY, ecodes.KEY_C, 1),
         ]
         pressed, _, errors, _ = _run_worker_with_events(device, events)
-        assert len(pressed) == 3
+        assert pressed == [ecodes.KEY_A, ecodes.KEY_B, ecodes.KEY_C]
         assert errors == []

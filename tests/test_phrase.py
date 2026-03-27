@@ -65,28 +65,25 @@ class TestPhraseDetector:
         assert d.feed(ecodes.KEY_A) is False
 
     def test_backspace_removes_last_char(self):
+        # _TARGET = "keys are clean"; type all but last char, backspace, wrong char → no match
         d = PhraseDetector()
-        _type(d, "keyboard cleane")   # one char short
-        d.feed(ecodes.KEY_D)          # now would match — but let's backspace first
-        d2 = PhraseDetector()
-        _type(d2, "keyboard cleane")
-        d2.feed(ecodes.KEY_BACKSPACE)  # removes 'e'
-        result = d2.feed(ecodes.KEY_D) # now buffer ends in "keyboard cleand" — no match
+        _type(d, _TARGET[:-1])          # "keys are clea"
+        d.feed(ecodes.KEY_BACKSPACE)    # removes 'a', buffer = "keys are cle"
+        result = d.feed(ecodes.KEY_N)   # "keys are clen" — no match
         assert result is False
 
     def test_backspace_then_retype_matches(self):
         d = PhraseDetector()
-        _type(d, "keyboard cleane")
-        d.feed(ecodes.KEY_BACKSPACE)   # removes 'e', buffer = "keyboard clean"
-        result = d.feed(ecodes.KEY_D)  # buffer = "keyboard cleand" — no match
+        _type(d, _TARGET[:-1])           # "keys are clea"
+        d.feed(ecodes.KEY_BACKSPACE)     # removes 'a', buffer = "keys are cle"
+        result = d.feed(ecodes.KEY_N)    # "keys are clen" — no match
         assert result is False
-        # now correct it
+        # correct it
         d2 = PhraseDetector()
-        _type(d2, "keyboard cleane")
-        d2.feed(ecodes.KEY_BACKSPACE)  # "keyboard clean"
-        result = d2.feed(ecodes.KEY_E) # "keyboard cleane" — no match yet
-        assert result is False
-        result = d2.feed(ecodes.KEY_D) # "keyboard cleaned" — match!
+        _type(d2, _TARGET[:-1])          # "keys are clea"
+        d2.feed(ecodes.KEY_BACKSPACE)    # "keys are cle"
+        d2.feed(ecodes.KEY_A)            # "keys are clea"
+        result = d2.feed(ecodes.KEY_N)   # "keys are clean" — match!
         assert result is True
 
     def test_backspace_on_empty_buffer_is_safe(self):

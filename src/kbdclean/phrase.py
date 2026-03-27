@@ -1,7 +1,7 @@
 import threading
 from evdev import ecodes
 
-_TARGET = "keyboard cleaned"
+_TARGET = "keys are clean"
 
 # Map evdev key codes to lowercase characters
 _SCANCODE_TO_CHAR: dict[int, str] = {
