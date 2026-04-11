@@ -1,3 +1,9 @@
+## 0.2.1 — 2026-04-11
+
+### Changes since v0.2.0
+
+- b5882a6 Add COPR integration.
+
 ## 0.2.0 — 2026-04-11
 
 ### Changes since v0.1.1
