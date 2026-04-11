@@ -1,3 +1,10 @@
+## 0.2.0 — 2026-04-11
+
+### Changes since v0.1.1
+
+- c4a2333 Cleanup
+- 0443ef0 Start 0.1.2-dev
+
 ## 0.1.1 — 2026-03-27
 
 ### Changes since beginning
